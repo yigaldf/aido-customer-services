@@ -4,7 +4,7 @@
 
 > **"Stay juicy. Glow all night."**
 >
-> 🌐 **האתר החי:** https://yigaldf.github.io/aido-customer-services/ · 🔗 כל הקישורים: [`LINKS.md`](LINKS.md)
+> 🌐 **האתר החי:** https://yigaldf.github.io/aido-customer-services/ · 🔗 כל הקישורים: [`LINKS.md`](LINKS.md) · [`LINKS.pdf`](LINKS.pdf)
 > דאשבורד לניהול פניות לקוחות של בר Neon Peach: תלונות, הזמנות מקום, אירועים ועוד. המערכת מותאמת לטלפון.
 
 ⚠️ **זו מערכת לדוגמה (Demo).** כל הנתונים במערכת בדויים (Mock Data). אין בה לקוחות אמיתיים, והיא לא שולחת הודעות אמיתיות.
@@ -96,6 +96,8 @@ python3 -m http.server 8000
 | `SPEC.md` | האפיון הטכני המלא |
 | `WORKLOG.md` | יומן המעקב של כל הבקשות והשינויים |
 | `LINKS.md` | קישורים לאתר החי, למאגר ב-GitHub ולמסמכים |
+| `LINKS.pdf` | אותם קישורים כקובץ PDF מעוצב להדפסה ולשליחה, עם קישורים לחיצים |
+| `assets/links-pdf.html` | המקור שממנו נוצר `LINKS.pdf` |
 
 ## 6. סטטוס הפרויקט
 - ✅ אפיון (SPEC) מלא
