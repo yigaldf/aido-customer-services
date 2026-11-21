@@ -4,6 +4,7 @@
 
 | # | תאריך ושעה | בקשה | מה בוצע | קבצים | Commit |
 |---|---|---|---|---|---|
+| 8 | 2026-11-21 19:00 | לבדוק שהאתר ב-GitHub Pages עובד | נוסף `yigaldf.github.io` לרשימת האתרים המותרים בסביבת הענן, כדי שאפשר יהיה לבדוק את האתר. התוצאה: 404, "There isn't a GitHub Pages site here". לפי GitHub, Pages לא מופעל במאגר (`has_pages: false`), ואין ריצת build של Pages. נמצא גם שענף ברירת המחדל של המאגר הוא ענף הפיתוח ולא `main`. הבעלים התבקש לשמור שוב את הגדרות Pages | `WORKLOG.md` | ראו git log |
 | 7 | 2026-11-21 18:50 | מעכשיו למזג כל PR ל-`main` אוטומטית בסיום כל פיצ'ר, בלי לחכות לאישור | הכלל נוסף ל-`CLAUDE.md`. PR #1 מוזג ל-`main`: https://github.com/yigaldf/aido-customer-services/pull/1 | `CLAUDE.md`, `WORKLOG.md` | `a07248a` |
 | 6 | 2026-11-21 18:45 | להוריד את הפרויקט למחשב | נוצר קובץ ZIP של הפרויקט (מהענף הנוכחי, בלי תיקיית `.git`) ונשלח להורדה. נוספו הוראות הורדה | `WORKLOG.md` | `b1d0f10` |
 | 5 | 2026-11-21 18:42 | לפתוח PR | נוצר הענף `main` מה-commit הראשון של הפרויקט, כי עד עכשיו לא היה ענף כזה. נפתח PR מענף הפיתוח ל-`main`: https://github.com/yigaldf/aido-customer-services/pull/1 | `WORKLOG.md` | `b1d0f10` |
