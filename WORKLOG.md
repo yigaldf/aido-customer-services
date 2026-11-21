@@ -4,6 +4,7 @@
 
 | # | תאריך ושעה | בקשה | מה בוצע | קבצים | Commit |
 |---|---|---|---|---|---|
+| 10 | 2026-11-21 19:15 | ליצור ב-Google Drive קובץ עם הקישורים | לא בוצע: לחיבור ל-Google Drive חסרה הרשאת כתיבה, והיצירה נכשלה. הבעלים התבקש לחבר מחדש את Google Drive ולאשר הרשאת כתיבה. הקישורים זמינים בינתיים ב-`LINKS.md` | `WORKLOG.md` | ראו PR #4 |
 | 9 | 2026-11-21 19:10 | ליצור קובץ עם קישורים ל-GitHub ול-SPEC (אחרי ש-GitHub Pages הופעל) | האתר החי נבדק: כל הקבצים מחזירים 200, ובבדיקה עם Playwright נטענו 5 כרטיסי המדדים ו-3 הגרפים, בלי שגיאות. נוצר `LINKS.md` עם קישורים לאתר, למאגר, ל-PRs, ל-commits, להורדת ZIP ולמסמכים (SPEC, README, WORKLOG). הקישור לאתר נוסף ל-README ול-SPEC, וה-SPEC עודכן לגרסה 1.4 | `LINKS.md`, `README.md`, `SPEC.md`, `WORKLOG.md` | ראו PR #3 |
 | 8 | 2026-11-21 19:00 | לבדוק שהאתר ב-GitHub Pages עובד | נוסף `yigaldf.github.io` לרשימת האתרים המותרים בסביבת הענן, כדי שאפשר יהיה לבדוק את האתר. התוצאה: 404, "There isn't a GitHub Pages site here". לפי GitHub, Pages לא מופעל במאגר (`has_pages: false`), ואין ריצת build של Pages. נמצא גם שענף ברירת המחדל של המאגר הוא ענף הפיתוח ולא `main`. הבעלים התבקש לשמור שוב את הגדרות Pages | `WORKLOG.md` | ראו git log |
 | 7 | 2026-11-21 18:50 | מעכשיו למזג כל PR ל-`main` אוטומטית בסיום כל פיצ'ר, בלי לחכות לאישור | הכלל נוסף ל-`CLAUDE.md`. PR #1 מוזג ל-`main`: https://github.com/yigaldf/aido-customer-services/pull/1 | `CLAUDE.md`, `WORKLOG.md` | `a07248a` |
