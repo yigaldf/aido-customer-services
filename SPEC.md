@@ -1,7 +1,7 @@
 # SPEC — דאשבורד שירות לקוחות | Neon Peach 🍑✨
 
 > מסמך אפיון מלא למערכת לדוגמה (Demo) לניהול פניות לקוחות של בר לצעירים.
-> גרסה: 1.3 · תאריך עדכון: 21.11.2026 · היסטוריית שינויים: ראו `WORKLOG.md`
+> גרסה: 1.4 · תאריך עדכון: 21.11.2026 · היסטוריית שינויים: ראו `WORKLOG.md`
 
 ---
 
@@ -36,7 +36,7 @@
 | **גרפים** | Chart.js 4.4.1, שמור מקומית ב-`vendor/chart.umd.js` | גרף בשורת קוד אחת, ועובד גם בלי אינטרנט |
 | **Backend** | אין | הדאטה נטען מקובץ `data.js` |
 | **Database** | קובץ Mock Data ב-JS + `localStorage` לשמירת שינויים | מספיק לדמו |
-| **Hosting** | GitHub Pages (או פתיחה מקומית) | חינם, deploy ב-push |
+| **Hosting** | GitHub Pages מענף `main` (או פתיחה מקומית) · אתר חי: https://yigaldf.github.io/aido-customer-services/ | חינם, deploy ב-push |
 | **שפה וכיווניות** | עברית, `dir="rtl"`, פונט Rubik מ-Google Fonts | |
 
 ### מבנה תיקיות
@@ -53,7 +53,8 @@ aido-customer-services/
 ├── CLAUDE.md         # הנחיות עבודה קבועות לפרויקט
 ├── SPEC.md           # המסמך הזה (אפיון טכני)
 ├── README.md         # הסבר ללקוח + הוראות הפעלה
-└── WORKLOG.md        # יומן מעקב בקשות ושינויים
+├── WORKLOG.md        # יומן מעקב בקשות ושינויים
+└── LINKS.md          # קישורים: אתר חי, GitHub, מסמכים
 ```
 
 ---
