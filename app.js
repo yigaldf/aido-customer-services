@@ -539,7 +539,7 @@
     const body = $("#weatherBody");
     try {
       const data = await window.NPWeather.fetchWeather({ useCache: !force });
-      weather = { data, now: data.current, tonight: window.NPWeather.summarizeTonight(data) };
+      weather = { data, now: data.current, tonight: window.NPWeather.summarizeTonight(data), days: window.NPWeather.nextDays(data) };
     } catch (e) {
       console.error(e);
       weather = { error: true };
@@ -571,7 +571,17 @@
       <div class="terrace ${t.terrace.open ? "open" : "closed"}">${t.terrace.open ? "🪴" : "☔"} ${esc(t.terrace.text)}<small>${esc(t.terrace.why)}</small></div>
       <div class="hours" role="list" aria-label="תחזית לפי שעה, ${t.from}–${t.to}">
         ${t.hours.map((h) => `<div class="hour" role="listitem">${h.time}<b>${h.emoji} ${h.temp}°</b><span class="rain">💧${h.rain}%</span></div>`).join("")}
-      </div>` : ""}`;
+      </div>` : ""}
+      <h3 class="days-title">📅 ${weather.days.length} הימים הקרובים · המרפסת בערב, 18:00 עד 02:00</h3>
+      <ul class="days">
+        ${weather.days.map((d) => `<li class="day ${d.night.ok ? "open" : "closed"}">
+          <span class="day-name"><b>${esc(d.name)}</b><small>${d.dateLabel}</small></span>
+          <span class="day-emoji" aria-hidden="true">${d.emoji}</span>
+          <span class="day-temp"><span dir="ltr"><b>${d.max}°</b> / ${d.min}°</span><small>💧${d.rainProbability}%</small></span>
+          <span class="day-terrace">${d.night.ok ? "🪴 מרפסת פתוחה" : "☔ מרפסת סגורה"}<small>${d.night.ok ? `בערב בין ${d.night.minTemp}° ל-${d.night.maxTemp}°` : esc(d.night.why)}</small></span>
+        </li>`).join("")}
+      </ul>
+      <p class="days-rule">המרפסת נסגרת להזמנות אם בערב הטמפרטורה יורדת מתחת ל-${window.NPWeather.TERRACE_RULES.minTemp}° או אם צפוי גשם. בלי תחזית אין הזמנות למרפסת.</p>`;
     if (t) {
       strip.hidden = false;
       strip.textContent = `${t.emoji} הערב ${t.from}–${t.to}: בין ${t.minTemp}° ל-${t.maxTemp}°, ${t.label}, סיכוי לגשם עד ${t.maxRain}% · ${t.terrace.text}`;
