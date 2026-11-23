@@ -5,6 +5,13 @@
 |---|---|
 | 🌐 **האתר החי (GitHub Pages)** | https://yigaldf.github.io/aido-customer-services/ |
 
+## דאשבורד ב-Claude
+| | קישור |
+|---|---|
+| 📊 **דאשבורד Neon Peach ב-Claude** (קורא בזמן אמת מ-Airtable) | https://claude.ai/artifact/V1dAAd2hdLxP6VJ9m7mDxJ |
+
+> הדאשבורד פרטי כברירת מחדל. כדי שאחרים יוכלו לפתוח אותו, משתפים אותו מתפריט Share. כל צופה צריך חיבור (Connector) משלו ל-Airtable עם גישה ל-base.
+
 ## GitHub
 | | קישור |
 |---|---|
