@@ -258,3 +258,23 @@ code { background: var(--bg); border-radius: 6px; padding: 1px 5px; font-size: .
 .fields > *, .res-fields > * { min-width: 0; }
 .res-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .res-fields .field:first-of-type { grid-column: 1 / -1; }
+
+/* Weather (Open-Meteo) */
+.weather-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.weather-head h2 { margin: 0; }
+.weather-body { margin-top: 10px; }
+.weather-now { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.weather-emoji { font-size: 2.6rem; line-height: 1; }
+.weather-temp { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.weather-desc { color: var(--muted); font-size: .9rem; }
+.terrace { margin-top: 12px; padding: 10px 12px; border-radius: 14px; font-weight: 500; }
+.terrace.open { background: var(--mint); color: #24453A; }
+.terrace.closed { background: var(--coral); color: #4A2030; }
+.terrace small { display: block; font-weight: 400; opacity: .85; }
+.hours { display: flex; gap: 6px; overflow-x: auto; margin-top: 12px; padding-bottom: 4px; scrollbar-width: thin; }
+.hour { flex: none; min-width: 58px; text-align: center; background: var(--bg); border-radius: 12px; padding: 6px 4px; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.hour b { display: block; font-size: .95rem; }
+.hour .rain { color: var(--deep); }
+.weather-src { margin-top: 10px; font-size: .75rem; color: var(--muted); }
+.weather-src a { color: var(--deep); }
+.weather-strip { background: var(--surface); border-radius: 14px; padding: 10px 14px; margin-bottom: 12px; box-shadow: var(--shadow); font-size: .92rem; }
