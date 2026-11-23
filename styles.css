@@ -231,3 +231,30 @@ h2 { font-size: 1rem; font-weight: 500; color: var(--deep); margin-bottom: 12px;
 
 .demo-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: .85rem; padding: 4px 0 12px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Airtable integration */
+.conn { border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; font-size: .92rem; }
+.conn.info { background: var(--blue); color: #2C3E50; }
+.conn.warn { background: var(--butter); color: #4A4060; }
+.conn.error { background: var(--coral); color: #4A2030; }
+.title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.title-row .view-title { margin-bottom: 0; }
+.form .field { margin-bottom: 10px; }
+.form input, .form select { width: 100%; min-height: 44px; border: 1px solid var(--border); background: var(--surface); border-radius: 14px; padding: 0 12px; }
+.res-fields { border: 1px dashed var(--border); border-radius: 14px; padding: 8px 10px 0; margin: 0 0 10px; grid-template-columns: 1fr 1fr 1fr; }
+.res-fields[hidden] { display: none; }
+.res-fields legend { font-size: .8rem; color: var(--muted); padding: 0 4px; }
+.hint { font-size: .85rem; color: var(--muted); margin: 4px 0 12px; }
+.hint a { color: var(--deep); }
+code { background: var(--bg); border-radius: 6px; padding: 1px 5px; font-size: .85em; direction: ltr; unicode-bidi: embed; }
+.btn:disabled { opacity: .6; cursor: progress; }
+.topbar-actions .js-new, #refreshBtn { font-size: 1.05rem; }
+@media (max-width: 420px) {
+  .me { display: none; }
+  .brand-sub { display: none; }
+  .topbar-actions { gap: 6px; }
+}
+.btn[hidden] { display: none; }
+.fields > *, .res-fields > * { min-width: 0; }
+.res-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.res-fields .field:first-of-type { grid-column: 1 / -1; }

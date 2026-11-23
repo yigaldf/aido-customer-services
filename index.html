@@ -21,6 +21,8 @@
       </div>
     </div>
     <div class="topbar-actions">
+      <button class="icon-btn js-new" aria-label="פנייה חדשה" title="פנייה חדשה">➕</button>
+      <button class="icon-btn" id="refreshBtn" aria-label="רענון נתונים מ-Airtable" title="רענון מ-Airtable">🔄</button>
       <button class="icon-btn" id="bellBtn" aria-label="פניות חדשות">🔔<span class="badge" id="bellCount">0</span></button>
       <div class="me" title="מאיה · שירות לקוחות">👩</div>
     </div>
@@ -30,10 +32,12 @@
     <button class="nav-item active" data-view="dashboard"><span>🏠</span>דאשבורד</button>
     <button class="nav-item" data-view="tickets"><span>📋</span>פניות</button>
     <button class="nav-item" data-view="tonight"><span>📅</span>הערב</button>
-    <button class="nav-reset js-reset" id="resetBtn" title="החזרת הנתונים למצב ההתחלתי">↺ איפוס דמו</button>
+    <button class="nav-item" data-view="settings"><span>⚙️</span>הגדרות</button>
+    <button class="nav-reset js-reset" id="resetBtn" title="מחיקת הנתונים ב-Airtable וטעינת נתוני הדמה מחדש">↺ טעינת דמו מחדש</button>
   </nav>
 
   <main class="main">
+    <div class="conn" id="connStatus" role="status" aria-live="polite" hidden></div>
     <!-- Dashboard -->
     <section class="view active" id="view-dashboard">
       <h1 class="view-title">היי מאיה 👋 <small id="todayLabel"></small></h1>
@@ -48,14 +52,14 @@
         <div class="list" id="urgentList"></div>
       </div>
       <div class="demo-footer">
-        <span>🍑 מערכת לדוגמה · כל הנתונים בדויים</span>
-        <button class="btn ghost js-reset">↺ איפוס דמו</button>
+        <span>🍑 מערכת לדוגמה · הנתונים נשמרים ב-Airtable</span>
+        <button class="btn ghost js-reset">↺ טעינת נתוני דמה מחדש</button>
       </div>
     </section>
 
     <!-- Tickets -->
     <section class="view" id="view-tickets">
-      <h1 class="view-title">פניות <small id="ticketCount"></small></h1>
+      <div class="title-row"><h1 class="view-title">פניות <small id="ticketCount"></small></h1><button class="btn js-new">➕ פנייה חדשה</button></div>
       <div class="toolbar">
         <input type="search" id="search" placeholder="🔍 חיפוש לפי שם, טלפון, נושא או מזהה" aria-label="חיפוש">
         <select id="sort" aria-label="מיון">
@@ -73,6 +77,31 @@
       <h1 class="view-title">הזמנות להערב <small id="tonightSummary"></small></h1>
       <div class="list" id="tonightList"></div>
     </section>
+
+    <!-- Settings -->
+    <section class="view" id="view-settings">
+      <h1 class="view-title">הגדרות · חיבור ל-Airtable</h1>
+      <div class="card">
+        <h2>מצב חיבור</h2>
+        <div id="setState"></div>
+      </div>
+      <form class="card form" id="settingsForm" autocomplete="off">
+        <h2>🔌 פרטי חיבור</h2>
+        <div class="field"><label for="setBase">מזהה base (מתחיל ב-app)</label><input id="setBase" dir="ltr" spellcheck="false"></div>
+        <div class="field"><label for="setToken">מפתח גישה אישי (Personal Access Token)</label><input id="setToken" type="password" dir="ltr" spellcheck="false" autocomplete="new-password"></div>
+        <p class="hint">🔒 המפתח נשמר <b>רק בדפדפן הזה</b> ולא נשלח לשום מקום חוץ מ-Airtable. אל תשתמשו בהגדרה הזו במחשב ציבורי.
+          יצירת מפתח: <a href="https://airtable.com/create/tokens" target="_blank" rel="noopener">airtable.com/create/tokens</a> עם ההרשאות <code>data.records:read</code> ו-<code>data.records:write</code> ל-base של Neon Peach.</p>
+        <div class="d-actions">
+          <button class="btn grow" type="submit" id="setSave">🔌 שמירה ובדיקת חיבור</button>
+          <button class="btn ghost" type="button" id="setDisconnect">ניתוק</button>
+        </div>
+      </form>
+      <div class="card">
+        <h2>🧪 נתוני דמה</h2>
+        <p class="hint">מוחק את כל הפניות, ההערות והנציגים ב-Airtable, וטוען מחדש 40 פניות דמה עם תאריכים עדכניים. הפעולה משפיעה על כל מי שמשתמש במערכת.</p>
+        <button class="btn secondary js-reset" id="setSeed">↺ טעינת נתוני דמה מחדש</button>
+      </div>
+    </section>
   </main>
 
   <!-- Ticket details -->
@@ -85,7 +114,9 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="vendor/chart.umd.js"></script>
+  <script src="config.js"></script>
   <script src="data.js"></script>
+  <script src="airtable.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
