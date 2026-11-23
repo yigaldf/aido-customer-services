@@ -50,6 +50,7 @@ const SCHEMA = [
       { name: "ReservationDate", type: "date", options: { dateFormat: { name: "iso" } } },
       { name: "ReservationTime", type: "singleLineText" },
       { name: "Guests", type: "number", options: { precision: 0 } },
+      { name: "Seating", type: "singleSelect", options: choices(dict.seating) },
       { name: "Rating", type: "number", options: { precision: 0 } },
     ],
   },

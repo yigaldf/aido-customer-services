@@ -261,12 +261,13 @@
     const list = tickets.filter((t) => t.reservation && t.reservation.date === today)
       .sort((a, b) => a.reservation.time.localeCompare(b.reservation.time));
     const guests = list.reduce((a, t) => a + t.reservation.guests, 0);
-    $("#tonightSummary").textContent = `${list.length} הזמנות · ${guests} סועדים`;
+    const terraceCount = list.filter((t) => t.reservation.seating === "terrace").length;
+    $("#tonightSummary").textContent = `${list.length} הזמנות · ${guests} סועדים · ${terraceCount} במרפסת`;
     $("#tonightList").innerHTML = list.length ? list.map((t) => `<button class="ticket" data-id="${t.id}">
       <span class="ticket-emoji" style="background:var(--peach-soft)"><span class="res-time">${t.reservation.time}</span></span>
       <span class="ticket-main">
-        <div class="ticket-subject">${esc(t.customer.name)} · ${t.reservation.guests} סועדים</div>
-        <div class="ticket-meta">${esc(t.subject)}</div>
+        <div class="ticket-subject">${esc(t.customer.name)} · ${t.reservation.guests} סועדים · ${window.NP_DICT.seating[t.reservation.seating || "inside"].emoji} ${window.NP_DICT.seating[t.reservation.seating || "inside"].label}</div>
+        <div class="ticket-meta">${t.reservation.seating === "terrace" && !terraceCheck(t.reservation.date, t.reservation.time).ok ? "⚠️ התחזית לא מאפשרת מרפסת, כדאי להעביר פנימה · " : ""}${esc(t.subject)}</div>
       </span>
       <span class="ticket-side"><span class="pill st-${t.status}">${STATUSES[t.status].label}</span></span>
     </button>`).join("") : `<div class="empty">אין הזמנות להערב</div>`;
@@ -306,7 +307,7 @@
 
       <div class="d-section">
         <dl class="kv"><dt>לקוח/ה</dt><dd>${esc(t.customer.name)}</dd><dt>טלפון</dt><dd dir="ltr" style="text-align:right">${esc(t.customer.phone)}</dd>
-        ${t.reservation ? `<dt>הזמנה</dt><dd>📅 ${t.reservation.date.split("-").reverse().join(".")} · 🕘 ${t.reservation.time} · 👥 ${t.reservation.guests}</dd>` : ""}
+        ${t.reservation ? `<dt>הזמנה</dt><dd>📅 ${t.reservation.date.split("-").reverse().join(".")} · 🕘 ${t.reservation.time} · 👥 ${t.reservation.guests} · ${window.NP_DICT.seating[t.reservation.seating || "inside"].emoji} ${window.NP_DICT.seating[t.reservation.seating || "inside"].label}</dd>` : ""}
         ${t.rating ? `<dt>דירוג</dt><dd>${"⭐".repeat(t.rating)}</dd>` : ""}</dl>
         <div class="d-actions">
           <a class="btn grow" href="tel:${t.customer.phone.replace(/\D/g, "")}">📞 התקשר</a>
@@ -326,6 +327,16 @@
             <select id="dAssignee"><option value="">— ללא —</option>${agents.map((a) => `<option ${a.name === t.assignee ? "selected" : ""}>${a.name}</option>`).join("")}</select></div>
           <div class="field"><label for="dPriority">עדיפות</label><select id="dPriority">${opts(PRIORITIES, t.priority)}</select></div>
         </div>
+        ${t.reservation ? (() => {
+          const chk = terraceCheck(t.reservation.date, t.reservation.time);
+          const cur = t.reservation.seating || "inside";
+          return `<div class="field" style="margin-top:8px"><label for="dSeating">מקום ישיבה</label>
+            <select id="dSeating">
+              <option value="inside" ${cur === "inside" ? "selected" : ""}>🏠 פנים</option>
+              <option value="terrace" ${cur === "terrace" ? "selected" : ""} ${chk.ok || cur === "terrace" ? "" : "disabled"}>🪴 מרפסת${chk.ok ? "" : " (חסום)"}</option>
+            </select>
+            <p class="seat-hint ${chk.ok ? "ok" : "no"}">${chk.ok ? "🪴" : "☔"} ${esc(chk.reason)}${cur === "terrace" && !chk.ok ? " · מומלץ להעביר פנימה" : ""}</p></div>`;
+        })() : ""}
       </div>
 
       <div class="d-section">
@@ -371,6 +382,14 @@
           <div class="field"><label for="nDate">תאריך</label><input id="nDate" type="date"></div>
           <div class="field"><label for="nTime">שעה</label><input id="nTime" type="time" value="21:00"></div>
           <div class="field"><label for="nGuests">סועדים</label><input id="nGuests" type="number" min="1" max="200" value="2" inputmode="numeric"></div>
+          <div class="field seat-field" role="radiogroup" aria-labelledby="nSeatLabel">
+            <span class="seat-label" id="nSeatLabel">מקום ישיבה</span>
+            <div class="seat-options">
+              <label class="seat-opt"><input type="radio" name="nSeating" id="nSeatInside" value="inside" checked> 🏠 פנים</label>
+              <label class="seat-opt"><input type="radio" name="nSeating" id="nSeatTerrace" value="terrace"> 🪴 מרפסת</label>
+            </div>
+            <p class="seat-hint" id="nSeatHint"></p>
+          </div>
         </fieldset>
         <div class="d-actions"><button class="btn grow" type="submit" id="nSubmit">💾 שמירת פנייה</button></div>
       </form>`;
@@ -384,7 +403,16 @@
   }
   function syncResFields() {
     const res = $("#nRes");
-    if (res) res.hidden = $("#nCategory").value !== "reservation";
+    if (!res) return;
+    res.hidden = $("#nCategory").value !== "reservation";
+    const chk = terraceCheck($("#nDate").value, $("#nTime").value);
+    const terrace = $("#nSeatTerrace");
+    terrace.disabled = !chk.ok;
+    terrace.closest(".seat-opt").classList.toggle("disabled", !chk.ok);
+    if (!chk.ok && terrace.checked) $("#nSeatInside").checked = true;
+    const hint = $("#nSeatHint");
+    hint.textContent = `${chk.ok ? "🪴" : "☔"} ${chk.reason}`;
+    hint.className = `seat-hint ${chk.ok ? "ok" : "no"}`;
   }
   async function submitNewTicket(e) {
     e.preventDefault();
@@ -403,7 +431,12 @@
       rating: null,
     };
     if (tk.category === "reservation") {
-      tk.reservation = { date: $("#nDate").value, time: $("#nTime").value, guests: parseInt($("#nGuests").value, 10) || 1 };
+      const seating = document.querySelector('input[name="nSeating"]:checked')?.value || "inside";
+      tk.reservation = { date: $("#nDate").value, time: $("#nTime").value, guests: parseInt($("#nGuests").value, 10) || 1, seating };
+      if (seating === "terrace") {
+        const chk = terraceCheck(tk.reservation.date, tk.reservation.time); // re-check at save time
+        if (!chk.ok) { syncResFields(); return toast(`⚠️ ${chk.reason}`); }
+      }
     }
     const btn = $("#nSubmit");
     btn.disabled = true; btn.textContent = "⏳ שומר ב-Airtable…";
@@ -474,18 +507,47 @@
     el.textContent = text; el.className = "conn info"; el.hidden = false;
   }
 
+  // ---------- Terrace bookings depend on the forecast ----------
+  const terraceCheck = (date, time) =>
+    window.NPWeather.checkTerrace(weather && !weather.error ? weather.data : null, date, time);
+
+  async function setSeating(id, seating) {
+    const t = byId(id);
+    if (!t?.reservation || t.reservation.seating === seating) return;
+    if (seating === "terrace") {
+      const chk = terraceCheck(t.reservation.date, t.reservation.time);
+      if (!chk.ok) { toast(`⚠️ ${chk.reason}`); renderDrawer(); return; }
+    }
+    const before = t.reservation.seating;
+    t.reservation.seating = seating;
+    renderAll();
+    try {
+      await AT.updateTicket(client(), t._rid, { seating }, window.NP_DICT);
+      toast(`מקום הישיבה עודכן: ${window.NP_DICT.seating[seating].label}`);
+      await addNote(id, `מקום ישיבה שונה: ${window.NP_DICT.seating[before || "inside"].label} ← ${window.NP_DICT.seating[seating].label}`);
+    } catch (e) {
+      console.error(e);
+      t.reservation.seating = before;
+      renderAll();
+      toast("⚠️ השמירה ב-Airtable נכשלה, השינוי בוטל");
+    }
+  }
+
   // ---------- Weather (external public API: Open-Meteo) ----------
   let weather = null;
   async function loadWeather(force = false) {
     const body = $("#weatherBody");
     try {
       const data = await window.NPWeather.fetchWeather({ useCache: !force });
-      weather = { now: data.current, tonight: window.NPWeather.summarizeTonight(data) };
+      weather = { data, now: data.current, tonight: window.NPWeather.summarizeTonight(data) };
     } catch (e) {
       console.error(e);
       weather = { error: true };
     }
     renderWeather();
+    renderTonight();
+    if ($("#nRes")) syncResFields();
+    if (currentId) renderDrawer();
     if (force && !weather.error) toast("התחזית עודכנה 🌙");
     return body;
   }
@@ -493,7 +555,8 @@
     const body = $("#weatherBody"), strip = $("#tonightWeather");
     if (!weather) return;
     if (weather.error) {
-      body.innerHTML = `<div class="empty">לא הצלחנו לטעון את התחזית מ-Open-Meteo. נסו 🔄.</div>`;
+      body.innerHTML = `<div class="empty">לא הצלחנו לטעון את התחזית מ-Open-Meteo. נסו 🔄.</div>
+        <div class="terrace closed">☔ אין תחזית, ולכן ההזמנות למרפסת חסומות<small>אפשר להזמין מקום בפנים בלבד</small></div>`;
       strip.hidden = true;
       return;
     }
@@ -589,7 +652,8 @@
   });
 
   document.addEventListener("change", async (e) => {
-    if (e.target.id === "nCategory") return syncResFields();
+    if (e.target.id === "nCategory" || e.target.id === "nDate" || e.target.id === "nTime") return syncResFields();
+    if (e.target.id === "dSeating" && currentId) return setSeating(currentId, e.target.value);
     if (!currentId) return;
     if (e.target.id === "dAssignee" && await patch(currentId, { assignee: e.target.value || null })) toast("השיוך עודכן");
     if (e.target.id === "dPriority" && await patch(currentId, { priority: e.target.value })) toast("העדיפות עודכנה");
