@@ -94,3 +94,34 @@ window.npBuildTickets = function () {
     return t;
   });
 };
+
+/* Shared dictionaries. `label` is also the choice name stored in Airtable. */
+window.NP_DICT = {
+  categories: {
+    reservation: { label: "הזמנת מקום", emoji: "📅", color: "#FFB899", at: "orangeLight2" },
+    complaint:   { label: "תלונה", emoji: "😤", color: "#FFA8B5", at: "redLight2" },
+    event:       { label: "אירוע פרטי", emoji: "🎉", color: "#C9B6FF", at: "purpleLight2" },
+    feedback:    { label: "משוב", emoji: "💖", color: "#B8F0E0", at: "tealLight2" },
+    question:    { label: "שאלה", emoji: "❓", color: "#BFE3FF", at: "blueLight2" },
+    lost_found:  { label: "אבדות ומציאות", emoji: "🔎", color: "#FFF4B8", at: "yellowLight2" },
+    job:         { label: "עבודה", emoji: "🧑‍🍳", color: "#E6D3C4", at: "grayLight2" },
+  },
+  statuses: {
+    new:         { label: "חדש", emoji: "🔵", order: 0, at: "blueLight2" },
+    in_progress: { label: "בטיפול", emoji: "🟡", order: 1, at: "yellowLight2" },
+    resolved:    { label: "טופל", emoji: "🟢", order: 2, at: "greenLight2" },
+    closed:      { label: "סגור", emoji: "⚪", order: 3, at: "grayLight2" },
+  },
+  priorities: {
+    high:   { label: "גבוהה", order: 0, at: "redLight2" },
+    medium: { label: "בינונית", order: 1, at: "orangeLight2" },
+    low:    { label: "נמוכה", order: 2, at: "greenLight2" },
+  },
+  channels: {
+    whatsapp:  { label: "וואטסאפ", emoji: "💬", at: "greenLight2" },
+    instagram: { label: "אינסטגרם", emoji: "📸", at: "pinkLight2" },
+    phone:     { label: "טלפון", emoji: "📞", at: "blueLight2" },
+    website:   { label: "אתר", emoji: "🌐", at: "purpleLight2" },
+    walk_in:   { label: "הגעה פיזית", emoji: "🚶", at: "grayLight2" },
+  },
+};

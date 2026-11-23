@@ -2,73 +2,111 @@
 (function () {
   "use strict";
 
-  // ---------- Dictionaries ----------
-  const CATEGORIES = {
-    reservation: { label: "הזמנת מקום", emoji: "📅", color: "#FFB899" },
-    complaint:   { label: "תלונה", emoji: "😤", color: "#FFA8B5" },
-    event:       { label: "אירוע פרטי", emoji: "🎉", color: "#C9B6FF" },
-    feedback:    { label: "משוב", emoji: "💖", color: "#B8F0E0" },
-    question:    { label: "שאלה", emoji: "❓", color: "#BFE3FF" },
-    lost_found:  { label: "אבדות ומציאות", emoji: "🔎", color: "#FFF4B8" },
-    job:         { label: "עבודה", emoji: "🧑‍🍳", color: "#E6D3C4" },
-  };
-  const STATUSES = {
-    new:         { label: "חדש", emoji: "🔵", order: 0 },
-    in_progress: { label: "בטיפול", emoji: "🟡", order: 1 },
-    resolved:    { label: "טופל", emoji: "🟢", order: 2 },
-    closed:      { label: "סגור", emoji: "⚪", order: 3 },
-  };
-  const PRIORITIES = {
-    high:   { label: "גבוהה", order: 0 },
-    medium: { label: "בינונית", order: 1 },
-    low:    { label: "נמוכה", order: 2 },
-  };
-  const CHANNELS = {
-    whatsapp:  { label: "וואטסאפ", emoji: "💬" },
-    instagram: { label: "אינסטגרם", emoji: "📸" },
-    phone:     { label: "טלפון", emoji: "📞" },
-    website:   { label: "אתר", emoji: "🌐" },
-    walk_in:   { label: "הגעה פיזית", emoji: "🚶" },
-  };
+  // ---------- Dictionaries (shared with airtable.js, defined in data.js) ----------
+  const { categories: CATEGORIES, statuses: STATUSES, priorities: PRIORITIES, channels: CHANNELS } = window.NP_DICT;
   const ME = "מאיה";
-  const STORE_KEY = "neon-peach-overrides-v1";
+  const TOKEN_KEY = "neon-peach-airtable-token";
+  const BASE_KEY = "neon-peach-airtable-base";
+  const AT = window.NPAirtable;
 
-  // ---------- Storage (overrides on top of mock data) ----------
-  const store = {
-    load() {
-      try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; }
+  // ---------- Settings (token lives only in this browser) ----------
+  const settings = {
+    get token() { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; } },
+    get baseId() { try { return localStorage.getItem(BASE_KEY) || window.NP_CONFIG.baseId; } catch { return window.NP_CONFIG.baseId; } },
+    save(token, baseId) {
+      try {
+        localStorage.setItem(TOKEN_KEY, token);
+        localStorage.setItem(BASE_KEY, baseId);
+      } catch { /* storage blocked: settings will last for this visit only */ }
+      memory = { token, baseId };
     },
-    save(o) {
-      try { localStorage.setItem(STORE_KEY, JSON.stringify(o)); } catch { /* storage unavailable: keep in memory */ }
-    },
-    clear() {
-      try { localStorage.removeItem(STORE_KEY); } catch { /* ignore */ }
-    },
+    clear() { try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(BASE_KEY); } catch { /* ignore */ } memory = null; },
   };
-  let overrides = store.load();
-  let tickets = [];
+  let memory = null;
+  const creds = () => memory || { token: settings.token, baseId: settings.baseId };
+  const client = () => AT.createClient(creds());
+  const connected = () => Boolean(creds().token);
 
-  function buildState() {
-    tickets = window.npBuildTickets().map((t) => {
-      const o = overrides[t.id];
-      if (!o) return t;
-      return { ...t, ...o.fields, notes: [...t.notes, ...(o.notes || [])] };
-    });
-  }
-  function patch(id, fields) {
-    const o = (overrides[id] ||= { fields: {}, notes: [] });
-    Object.assign(o.fields, fields);
-    store.save(overrides);
-    Object.assign(byId(id), fields);
-  }
-  function addNote(id, text) {
-    const note = { by: ME, at: new Date().toISOString(), text };
-    const o = (overrides[id] ||= { fields: {}, notes: [] });
-    o.notes.push(note);
-    store.save(overrides);
-    byId(id).notes.push(note);
-  }
+  // ---------- State ----------
+  let tickets = [];
+  let agents = window.NP_AGENTS;
+  let loading = false;
   const byId = (id) => tickets.find((t) => t.id === id);
+
+  async function load() {
+    if (!connected()) { tickets = []; renderAll(); showView("settings"); setStatus("not-connected"); return; }
+    loading = true; setStatus("loading");
+    try {
+      const data = await AT.loadAll(client(), window.NP_DICT);
+      tickets = data.tickets;
+      if (data.agents.length) agents = data.agents;
+      setStatus("ok");
+    } catch (e) {
+      setStatus("error", e);
+    } finally {
+      loading = false;
+      renderAll();
+    }
+  }
+
+  // Optimistic update: change the screen now, save in the background, roll back on failure.
+  async function patch(id, fields) {
+    const t = byId(id);
+    const before = Object.fromEntries(Object.keys(fields).map((k) => [k, t[k]]));
+    Object.assign(t, fields);
+    renderAll();
+    try {
+      await AT.updateTicket(client(), t._rid, fields, window.NP_DICT);
+      return true;
+    } catch (e) {
+      Object.assign(t, before);
+      renderAll();
+      toast("⚠️ השמירה ב-Airtable נכשלה, השינוי בוטל");
+      console.error(e);
+      return false;
+    }
+  }
+  async function addNote(id, text) {
+    const t = byId(id);
+    const note = { by: ME, at: new Date().toISOString(), text };
+    t.notes.push(note);
+    renderAll();
+    try {
+      note._rid = await AT.addNote(client(), t._rid, note);
+      return true;
+    } catch (e) {
+      t.notes.splice(t.notes.indexOf(note), 1);
+      renderAll();
+      toast("⚠️ שמירת ההערה ב-Airtable נכשלה");
+      console.error(e);
+      return false;
+    }
+  }
+  async function createTicket(tk) {
+    tk.notes = [];
+    tk._rid = await AT.createTicket(client(), tk, window.NP_DICT);
+    tickets.push(tk);
+    renderAll();
+  }
+  function nextTicketId() {
+    const max = tickets.reduce((m, t) => Math.max(m, parseInt(String(t.id).replace(/\D/g, ""), 10) || 0), 1000);
+    return `BB-${max + 1}`;
+  }
+
+  // ---------- Connection status banner ----------
+  function setStatus(state, err) {
+    const el = $("#connStatus");
+    const map = {
+      loading: ["⏳ טוען נתונים מ-Airtable…", "info"],
+      ok: ["", ""],
+      "not-connected": ["🔌 המערכת עוד לא מחוברת ל-Airtable. הזינו מפתח גישה במסך ההגדרות.", "warn"],
+      error: [`⚠️ לא הצלחנו לטעון נתונים מ-Airtable${err?.status === 401 || err?.status === 403 ? " — בדקו את מפתח הגישה בהגדרות" : ""}. ${err ? esc(err.message) : ""}`, "error"],
+    };
+    const [text, kind] = map[state];
+    el.textContent = text;
+    el.className = `conn ${kind}`;
+    el.hidden = !text;
+  }
 
   // ---------- Helpers ----------
   const $ = (s) => document.querySelector(s);
@@ -285,7 +323,7 @@
         </div>
         <div class="fields" style="margin-top:10px">
           <div class="field"><label for="dAssignee">שיוך לנציג</label>
-            <select id="dAssignee"><option value="">— ללא —</option>${window.NP_AGENTS.map((a) => `<option ${a.name === t.assignee ? "selected" : ""}>${a.name}</option>`).join("")}</select></div>
+            <select id="dAssignee"><option value="">— ללא —</option>${agents.map((a) => `<option ${a.name === t.assignee ? "selected" : ""}>${a.name}</option>`).join("")}</select></div>
           <div class="field"><label for="dPriority">עדיפות</label><select id="dPriority">${opts(PRIORITIES, t.priority)}</select></div>
         </div>
       </div>
@@ -305,12 +343,144 @@
       </div>`;
   }
 
+  // ---------- New ticket form ----------
+  function openNewTicket() {
+    if (!connected()) { toast("קודם צריך להתחבר ל-Airtable ⚙️"); return showView("settings"); }
+    currentId = null;
+    lastFocus = document.activeElement;
+    const opts = (dict) => Object.entries(dict).map(([v, d]) => `<option value="${v}">${d.emoji ? d.emoji + " " : ""}${d.label}</option>`).join("");
+    $("#drawerBody").innerHTML = `
+      <div class="d-head">
+        <span class="ticket-emoji" style="background:var(--peach)">➕</span>
+        <div><h3 id="dTitle">פנייה חדשה</h3><div class="ticket-meta">תישמר ישירות ב-Airtable</div></div>
+        <button class="d-close" aria-label="סגירה">✕</button>
+      </div>
+      <form id="newTicketForm" class="d-section form">
+        <div class="fields">
+          <div class="field"><label for="nName">שם הלקוח/ה *</label><input id="nName" required autocomplete="off"></div>
+          <div class="field"><label for="nPhone">טלפון *</label><input id="nPhone" type="tel" required dir="ltr" placeholder="050-0000000"></div>
+          <div class="field"><label for="nCategory">סוג פנייה</label><select id="nCategory">${opts(CATEGORIES)}</select></div>
+          <div class="field"><label for="nChannel">ערוץ</label><select id="nChannel">${opts(CHANNELS)}</select></div>
+          <div class="field"><label for="nPriority">עדיפות</label><select id="nPriority">${opts(PRIORITIES)}</select></div>
+          <div class="field"><label for="nAssignee">שיוך לנציג</label><select id="nAssignee"><option value="">— ללא —</option>${agents.map((a) => `<option>${esc(a.name)}</option>`).join("")}</select></div>
+        </div>
+        <div class="field"><label for="nSubject">נושא *</label><input id="nSubject" required autocomplete="off"></div>
+        <div class="field"><label for="nMessage">הודעת הלקוח *</label><textarea id="nMessage" required></textarea></div>
+        <fieldset class="fields res-fields" id="nRes">
+          <legend>פרטי הזמנה</legend>
+          <div class="field"><label for="nDate">תאריך</label><input id="nDate" type="date"></div>
+          <div class="field"><label for="nTime">שעה</label><input id="nTime" type="time" value="21:00"></div>
+          <div class="field"><label for="nGuests">סועדים</label><input id="nGuests" type="number" min="1" max="200" value="2" inputmode="numeric"></div>
+        </fieldset>
+        <div class="d-actions"><button class="btn grow" type="submit" id="nSubmit">💾 שמירת פנייה</button></div>
+      </form>`;
+    $("#nPriority").value = "medium";
+    $("#nDate").value = todayStr();
+    syncResFields();
+    $("#overlay").hidden = false;
+    $("#drawer").classList.add("open");
+    $("#drawer").setAttribute("aria-hidden", "false");
+    setTimeout(() => $("#nName")?.focus(), 50);
+  }
+  function syncResFields() {
+    const res = $("#nRes");
+    if (res) res.hidden = $("#nCategory").value !== "reservation";
+  }
+  async function submitNewTicket(e) {
+    e.preventDefault();
+    const val = (id) => $(id).value.trim();
+    const tk = {
+      id: nextTicketId(),
+      createdAt: new Date().toISOString(),
+      customer: { name: val("#nName"), phone: val("#nPhone") },
+      channel: $("#nChannel").value,
+      category: $("#nCategory").value,
+      subject: val("#nSubject"),
+      message: val("#nMessage"),
+      priority: $("#nPriority").value,
+      status: "new",
+      assignee: $("#nAssignee").value || null,
+      rating: null,
+    };
+    if (tk.category === "reservation") {
+      tk.reservation = { date: $("#nDate").value, time: $("#nTime").value, guests: parseInt($("#nGuests").value, 10) || 1 };
+    }
+    const btn = $("#nSubmit");
+    btn.disabled = true; btn.textContent = "⏳ שומר ב-Airtable…";
+    try {
+      await createTicket(tk);
+      closeDrawer();
+      toast(`הפנייה ${tk.id} נשמרה ב-Airtable 🎉`);
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false; btn.textContent = "💾 שמירת פנייה";
+      toast("⚠️ שמירת הפנייה ב-Airtable נכשלה");
+    }
+  }
+
+  // ---------- Settings ----------
+  function renderSettings() {
+    const c = creds();
+    $("#setBase").value = c.baseId;
+    $("#setToken").value = "";
+    $("#setToken").placeholder = c.token ? "•••••• מפתח שמור בדפדפן הזה (השאירו ריק כדי לא לשנות)" : "pat…";
+    $("#setState").innerHTML = c.token
+      ? `<span class="pill st-resolved">🟢 מחובר</span> base: <code>${esc(c.baseId)}</code>`
+      : `<span class="pill st-closed">⚪ לא מחובר</span>`;
+    $("#setDisconnect").hidden = !c.token;
+    $("#setSeed").disabled = !c.token;
+  }
+  async function saveSettings(e) {
+    e.preventDefault();
+    const token = $("#setToken").value.trim() || creds().token;
+    const baseId = $("#setBase").value.trim();
+    if (!token) return toast("הזינו מפתח גישה");
+    if (!/^app[A-Za-z0-9]{14}$/.test(baseId)) return toast("מזהה base צריך להתחיל ב-app ולהכיל 17 תווים");
+    const btn = $("#setSave");
+    btn.disabled = true; btn.textContent = "⏳ בודק חיבור…";
+    try {
+      await AT.createClient({ baseId, token }).ping();
+      settings.save(token, baseId);
+      toast("החיבור ל-Airtable הצליח ✅");
+      renderSettings();
+      await load();
+      showView("dashboard");
+    } catch (err) {
+      toast(err.status === 401 || err.status === 403 ? "⚠️ המפתח לא תקין או שאין לו גישה ל-base הזה" : err.status === 404 ? "⚠️ לא נמצאה טבלת Tickets ב-base הזה" : "⚠️ החיבור נכשל");
+      console.error(err);
+    } finally {
+      btn.disabled = false; btn.textContent = "🔌 שמירה ובדיקת חיבור";
+    }
+  }
+  async function reseed() {
+    if (!connected()) return toast("קודם צריך להתחבר ל-Airtable ⚙️");
+    if (!confirm("פעולה זו מוחקת את כל הנתונים ב-Airtable (לכל המשתמשים) וטוענת מחדש את 40 פניות הדמה. להמשיך?")) return;
+    closeDrawer();
+    const els = document.querySelectorAll(".js-reset");
+    els.forEach((b) => (b.disabled = true));
+    try {
+      await AT.seedDemo(client(), { tickets: window.npBuildTickets(), agents: window.NP_AGENTS, dict: window.NP_DICT }, (m) => setStatusText(`⏳ ${m}`));
+      await load();
+      toast("נתוני הדמה נטענו מחדש ↺");
+    } catch (err) {
+      console.error(err);
+      setStatus("error", err);
+    } finally {
+      els.forEach((b) => (b.disabled = false));
+    }
+  }
+  function setStatusText(text) {
+    const el = $("#connStatus");
+    el.textContent = text; el.className = "conn info"; el.hidden = false;
+  }
+
   // ---------- Rendering orchestration ----------
   function renderAll() {
     renderKpis();
     renderUrgent();
     renderTickets();
     renderTonight();
+    renderSettings();
     if (activeView === "dashboard") renderCharts();
     if (currentId) renderDrawer();
   }
@@ -325,7 +495,7 @@
   }
 
   // ---------- Events ----------
-  document.addEventListener("click", (e) => {
+  document.addEventListener("click", async (e) => {
     const nav = e.target.closest(".nav-item");
     if (nav) return showView(nav.dataset.view);
 
@@ -338,51 +508,64 @@
     if (e.target.closest("#bellBtn")) {
       filters.status = "new"; renderFilters(); showView("tickets"); renderTickets(); return;
     }
-    if (e.target.closest(".js-reset")) {
-      if (!confirm("לאפס את כל השינויים בדמו?")) return;
-      store.clear(); overrides = {}; buildState(); closeDrawer(); renderAll(); toast("הדמו אופס ↺"); return;
+    if (e.target.closest(".js-new")) return openNewTicket();
+    if (e.target.closest("#refreshBtn")) { if (!loading) { await load(); toast("הנתונים עודכנו מ-Airtable 🔄"); } return; }
+    if (e.target.closest(".js-reset")) return reseed();
+    if (e.target.closest("#setDisconnect")) {
+      if (!confirm("לנתק את הדפדפן הזה מ-Airtable? (הנתונים ב-Airtable לא יימחקו)")) return;
+      settings.clear(); await load(); toast("נותק מ-Airtable"); return;
     }
     if (e.target.closest(".d-close") || e.target.id === "overlay") return closeDrawer();
 
     const st = e.target.closest("[data-status]");
     if (st && currentId) {
-      const t = byId(currentId);
+      const id = currentId, t = byId(id);
       if (t.status !== st.dataset.status) {
         const from = STATUSES[t.status].label, to = STATUSES[st.dataset.status].label;
-        patch(currentId, { status: st.dataset.status });
-        addNote(currentId, `סטטוס שונה: ${from} ← ${to}`);
-        renderAll(); toast(`הסטטוס עודכן ל"${to}"`);
+        if (await patch(id, { status: st.dataset.status })) {
+          toast(`הסטטוס עודכן ל"${to}"`);
+          await addNote(id, `סטטוס שונה: ${from} ← ${to}`);
+        }
       }
       return;
     }
     const q = e.target.closest("[data-quick]");
     if (q && currentId) {
-      const t = byId(currentId);
-      addNote(currentId, `📤 נשלחה תשובה ללקוח: "${window.NP_QUICK_REPLIES[+q.dataset.quick]}"`);
-      if (t.status === "new") patch(currentId, { status: "in_progress", assignee: t.assignee || ME });
-      renderAll(); toast("התשובה תועדה (בדמו לא נשלחת הודעה אמיתית)"); return;
+      const id = currentId, t = byId(id);
+      if (await addNote(id, `📤 נשלחה תשובה ללקוח: "${window.NP_QUICK_REPLIES[+q.dataset.quick]}"`)) {
+        toast("התשובה תועדה (בדמו לא נשלחת הודעה אמיתית)");
+        if (t.status === "new") await patch(id, { status: "in_progress", assignee: t.assignee || ME });
+      }
+      return;
     }
     if (e.target.closest("#dAddNote") && currentId) {
       const text = $("#dNote").value.trim();
       if (!text) return toast("כתבו הערה קודם ✍️");
-      addNote(currentId, text); renderAll(); toast("ההערה נוספה"); return;
+      if (await addNote(currentId, text)) toast("ההערה נשמרה");
+      return;
     }
   });
 
-  document.addEventListener("change", (e) => {
+  document.addEventListener("change", async (e) => {
+    if (e.target.id === "nCategory") return syncResFields();
     if (!currentId) return;
-    if (e.target.id === "dAssignee") { patch(currentId, { assignee: e.target.value || null }); renderAll(); toast("השיוך עודכן"); }
-    if (e.target.id === "dPriority") { patch(currentId, { priority: e.target.value }); renderAll(); toast("העדיפות עודכנה"); }
+    if (e.target.id === "dAssignee" && await patch(currentId, { assignee: e.target.value || null })) toast("השיוך עודכן");
+    if (e.target.id === "dPriority" && await patch(currentId, { priority: e.target.value })) toast("העדיפות עודכנה");
   });
 
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && currentId) closeDrawer(); });
+  document.addEventListener("submit", (e) => {
+    if (e.target.id === "newTicketForm") return submitNewTicket(e);
+    if (e.target.id === "settingsForm") return saveSettings(e);
+  });
+
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#drawer").classList.contains("open")) closeDrawer(); });
   $("#search").addEventListener("input", renderTickets);
   $("#sort").addEventListener("change", renderTickets);
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => activeView === "dashboard" && renderCharts());
 
   // ---------- Init ----------
   $("#todayLabel").textContent = new Date().toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long" });
-  buildState();
   renderFilters();
   renderAll();
+  load();
 })();
