@@ -2,7 +2,7 @@
  *
  * Tables (created by scripts/setup-airtable.js):
  *   Tickets: TicketId, CreatedAt, CustomerName, Phone, Channel, Category, Subject, Message,
- *            Priority, Status, Assignee, ReservationDate, ReservationTime, Guests, Rating
+ *            Priority, Status, Assignee, ReservationDate, ReservationTime, Guests, Seating, Rating
  *   Notes:   Text, Ticket (link to Tickets), Author, At
  *   Agents:  Name, Role, Avatar
  * Single-select values are stored as the Hebrew labels from NP_DICT (data.js).
@@ -117,6 +117,7 @@
       f.ReservationDate = tk.reservation.date;
       f.ReservationTime = tk.reservation.time;
       f.Guests = tk.reservation.guests;
+      f.Seating = dict.seating[tk.reservation.seating || "inside"].label;
     }
     return f;
   }
@@ -127,6 +128,7 @@
     if ("status" in patch) f.Status = dict.statuses[patch.status].label;
     if ("priority" in patch) f.Priority = dict.priorities[patch.priority].label;
     if ("assignee" in patch) f.Assignee = patch.assignee || "";
+    if ("seating" in patch) f.Seating = dict.seating[patch.seating].label;
     return f;
   }
 
@@ -148,7 +150,7 @@
       notes: notes || [],
     };
     if (f.ReservationDate) {
-      tk.reservation = { date: f.ReservationDate, time: f.ReservationTime || "", guests: f.Guests || 0 };
+      tk.reservation = { date: f.ReservationDate, time: f.ReservationTime || "", guests: f.Guests || 0, seating: byLabel(dict.seating, f.Seating, "inside") };
     }
     return tk;
   }

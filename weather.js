@@ -8,7 +8,7 @@
 
   const BAR = { name: "רוטשילד 42, תל אביב", latitude: 32.0636, longitude: 34.7741, timezone: "Asia/Jerusalem" };
   const API = "https://api.open-meteo.com/v1/forecast";
-  const CACHE_KEY = "neon-peach-weather-v1";
+  const CACHE_KEY = "neon-peach-weather-v2";
   const CACHE_MS = 30 * 60 * 1000; // the forecast updates hourly; 30 minutes is plenty
   const OPEN_HOUR = 18, CLOSE_HOUR = 2;
 
@@ -25,7 +25,7 @@
 
   function buildUrl(loc = BAR) {
     const q = new URLSearchParams({
-      latitude: loc.latitude, longitude: loc.longitude, timezone: loc.timezone, forecast_days: "2",
+      latitude: loc.latitude, longitude: loc.longitude, timezone: loc.timezone, forecast_days: "16",
       current: "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation",
       hourly: "temperature_2m,precipitation_probability,weather_code,wind_speed_10m",
     });
@@ -66,10 +66,49 @@
       ...describe(worst),
       hours: idx.map((i) => ({ time: h.time[i].slice(11, 16), temp: Math.round(h.temperature_2m[i]), rain: h.precipitation_probability[i] ?? 0, ...describe(h.weather_code[i]) })),
     };
-    summary.terrace = summary.maxRain >= 40 || summary.minTemp < 14 || summary.maxWind >= 30
-      ? { open: false, text: "מומלץ לסגור את המרפסת הערב", why: summary.maxRain >= 40 ? `סיכוי לגשם עד ${summary.maxRain}%` : summary.minTemp < 14 ? `קר, עד ${summary.minTemp}°` : `רוח עד ${summary.maxWind} קמ"ש` }
-      : { open: true, text: "אפשר לפתוח את המרפסת הערב", why: `בין ${summary.minTemp}° ל-${summary.maxTemp}°, סיכוי לגשם עד ${summary.maxRain}%` };
+    const R = TERRACE_RULES;
+    summary.terrace = summary.maxRain >= R.maxRain || summary.minTemp < R.minTemp || summary.maxWind >= R.maxWind
+      ? { open: false, text: "המרפסת סגורה הערב, ואין הזמנות למרפסת", why: summary.maxRain >= R.maxRain ? `סיכוי לגשם עד ${summary.maxRain}%` : summary.minTemp < R.minTemp ? `קר, עד ${summary.minTemp}°` : `רוח עד ${summary.maxWind} קמ"ש` }
+      : { open: true, text: "המרפסת פתוחה הערב, ואפשר להזמין מקום במרפסת", why: `בין ${summary.minTemp}° ל-${summary.maxTemp}°, סיכוי לגשם עד ${summary.maxRain}%` };
     return summary;
+  }
+
+  // Terrace rules — one place, used for tonight's advice and for every terrace booking.
+  const TERRACE_RULES = { maxRain: 40, minTemp: 14, maxWind: 30, sittingHours: 3 };
+
+  /**
+   * Can a terrace table be booked for `date` ("YYYY-MM-DD") at `time` ("HH:MM")?
+   * Checks the forecast for the sitting (the booked hour + the next 2 hours, within opening hours).
+   * Returns { known, ok, reason }. Without a forecast for those hours: known=false, ok=false.
+   */
+  function checkTerrace(data, date, time) {
+    if (!data || !data.hourly || !date || !/^\d{2}:\d{2}$/.test(time || "")) {
+      return { known: false, ok: false, reason: "אין תחזית זמינה, ולכן אי אפשר להזמין מקום במרפסת" };
+    }
+    const h = data.hourly;
+    const startHour = Number(time.slice(0, 2));
+    const shift = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+    const slots = [];
+    for (let k = 0; k < TERRACE_RULES.sittingHours; k++) {
+      const hr = startHour + k;
+      const d = hr >= 24 ? shift(date, 1) : date;
+      const hh = String(hr % 24).padStart(2, "0");
+      if (k > 0 && hr % 24 >= CLOSE_HOUR && hr % 24 < OPEN_HOUR) break; // past closing time
+      const i = h.time.indexOf(`${d}T${hh}:00`);
+      if (i < 0 || h.temperature_2m[i] == null) {
+        return { known: false, ok: false, reason: `אין תחזית ל-${date.split("-").reverse().join(".")} בשעה ${time}, ולכן אי אפשר להזמין מקום במרפסת` };
+      }
+      slots.push(i);
+    }
+    const rain = Math.max(...slots.map((i) => h.precipitation_probability[i] ?? 0));
+    const temp = Math.round(Math.min(...slots.map((i) => h.temperature_2m[i])));
+    const wind = Math.round(Math.max(...slots.map((i) => h.wind_speed_10m[i] ?? 0)));
+    const bad = rain >= TERRACE_RULES.maxRain ? `סיכוי לגשם ${rain}%`
+      : temp < TERRACE_RULES.minTemp ? `קר, ${temp}°`
+      : wind >= TERRACE_RULES.maxWind ? `רוח ${wind} קמ"ש` : null;
+    return bad
+      ? { known: true, ok: false, reason: `המרפסת סגורה להזמנות בשעה הזו: ${bad}`, rain, temp, wind }
+      : { known: true, ok: true, reason: `המרפסת פתוחה: ${temp}°, סיכוי לגשם ${rain}%`, rain, temp, wind };
   }
 
   async function fetchWeather({ useCache = true } = {}) {
@@ -96,7 +135,7 @@
     return data;
   }
 
-  const api = { BAR, buildUrl, describe, summarizeTonight, fetchWeather };
+  const api = { BAR, TERRACE_RULES, buildUrl, describe, summarizeTonight, checkTerrace, fetchWeather };
   root.NPWeather = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
