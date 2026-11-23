@@ -42,6 +42,14 @@
     <section class="view active" id="view-dashboard">
       <h1 class="view-title">היי מאיה 👋 <small id="todayLabel"></small></h1>
       <div class="kpis" id="kpis"></div>
+      <section class="card weather" id="weatherCard" aria-live="polite">
+        <div class="weather-head">
+          <h2>🌙 מזג האוויר הערב בבר</h2>
+          <button class="chip" id="weatherRefresh" type="button" aria-label="רענון תחזית">🔄</button>
+        </div>
+        <div id="weatherBody" class="weather-body"><div class="empty">טוען תחזית…</div></div>
+        <div class="weather-src">מקור: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · API ציבורי וחינמי · רוטשילד 42, תל אביב</div>
+      </section>
       <div class="charts">
         <div class="card chart-card wide"><h2>פניות לפי יום · 14 ימים</h2><div class="chart-box"><canvas id="chartDays"></canvas></div></div>
         <div class="card chart-card"><h2>פניות לפי סוג</h2><div class="chart-box"><canvas id="chartCats"></canvas></div></div>
@@ -75,6 +83,7 @@
     <!-- Tonight -->
     <section class="view" id="view-tonight">
       <h1 class="view-title">הזמנות להערב <small id="tonightSummary"></small></h1>
+      <div class="weather-strip" id="tonightWeather" hidden></div>
       <div class="list" id="tonightList"></div>
     </section>
 
@@ -117,6 +126,7 @@
   <script src="config.js"></script>
   <script src="data.js"></script>
   <script src="airtable.js"></script>
+  <script src="weather.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -474,6 +474,47 @@
     el.textContent = text; el.className = "conn info"; el.hidden = false;
   }
 
+  // ---------- Weather (external public API: Open-Meteo) ----------
+  let weather = null;
+  async function loadWeather(force = false) {
+    const body = $("#weatherBody");
+    try {
+      const data = await window.NPWeather.fetchWeather({ useCache: !force });
+      weather = { now: data.current, tonight: window.NPWeather.summarizeTonight(data) };
+    } catch (e) {
+      console.error(e);
+      weather = { error: true };
+    }
+    renderWeather();
+    if (force && !weather.error) toast("התחזית עודכנה 🌙");
+    return body;
+  }
+  function renderWeather() {
+    const body = $("#weatherBody"), strip = $("#tonightWeather");
+    if (!weather) return;
+    if (weather.error) {
+      body.innerHTML = `<div class="empty">לא הצלחנו לטעון את התחזית מ-Open-Meteo. נסו 🔄.</div>`;
+      strip.hidden = true;
+      return;
+    }
+    const now = weather.now, t = weather.tonight, d = window.NPWeather.describe(now.weather_code);
+    body.innerHTML = `
+      <div class="weather-now">
+        <span class="weather-emoji" aria-hidden="true">${d.emoji}</span>
+        <div><div class="weather-temp">${Math.round(now.temperature_2m)}°</div>
+          <div class="weather-desc">עכשיו · ${esc(d.label)} · מורגש ${Math.round(now.apparent_temperature)}° · רוח ${Math.round(now.wind_speed_10m)} קמ"ש</div></div>
+      </div>
+      ${t ? `
+      <div class="terrace ${t.terrace.open ? "open" : "closed"}">${t.terrace.open ? "🪴" : "☔"} ${esc(t.terrace.text)}<small>${esc(t.terrace.why)}</small></div>
+      <div class="hours" role="list" aria-label="תחזית לפי שעה, ${t.from}–${t.to}">
+        ${t.hours.map((h) => `<div class="hour" role="listitem">${h.time}<b>${h.emoji} ${h.temp}°</b><span class="rain">💧${h.rain}%</span></div>`).join("")}
+      </div>` : ""}`;
+    if (t) {
+      strip.hidden = false;
+      strip.textContent = `${t.emoji} הערב ${t.from}–${t.to}: בין ${t.minTemp}° ל-${t.maxTemp}°, ${t.label}, סיכוי לגשם עד ${t.maxRain}% · ${t.terrace.text}`;
+    } else strip.hidden = true;
+  }
+
   // ---------- Rendering orchestration ----------
   function renderAll() {
     renderKpis();
@@ -508,6 +549,7 @@
     if (e.target.closest("#bellBtn")) {
       filters.status = "new"; renderFilters(); showView("tickets"); renderTickets(); return;
     }
+    if (e.target.closest("#weatherRefresh")) { loadWeather(true); return; }
     if (e.target.closest(".js-new")) return openNewTicket();
     if (e.target.closest("#refreshBtn")) { if (!loading) { await load(); toast("הנתונים עודכנו מ-Airtable 🔄"); } return; }
     if (e.target.closest(".js-reset")) return reseed();
@@ -568,4 +610,5 @@
   renderFilters();
   renderAll();
   load();
+  loadWeather();
 })();
